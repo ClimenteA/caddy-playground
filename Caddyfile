@@ -1,0 +1,26 @@
+# Allow access to lower ports
+# sudo setcap CAP_NET_BIND_SERVICE=+eip $(which caddy)
+{   
+    debug
+    log
+    local_certs      
+}
+
+localhost:80 {
+
+    encode gzip
+    
+    handle_path /api/discovery-service/* {
+        reverse_proxy localhost:3000
+    }
+
+    handle_path /api/auth-service/* {
+        reverse_proxy localhost:3001
+    }
+
+    handle {
+        root ./public
+        file_server browse
+    }
+
+}
