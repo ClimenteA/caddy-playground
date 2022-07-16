@@ -40,43 +40,6 @@ class TokenModel(BaseModel):
     app: Optional[str]
 
 
-def register_service(register: RegisterModel):
-
-    if register.app in db["approved_apps"]:
-        if db["approved_apps"][register.app] == register.token:
-
-            new_token = str(uuid.uuid4())
-            db["valid_app_tokens"][register.app] = {
-                "token": new_token, 
-                "expire": (datetime.utcnow() + timedelta(minutes=30)).isoformat()
-            }
-            register.token = None
-            db["registered_services"][register.app] = register.dict()
-
-            log.info(f"Registration successful for '{register.app}'!")
-            return TokenModel(token=new_token)
-
-    return "Invalid credentials"
-
-
-def validate_token(t: TokenModel):
-
-    registered_app = db["valid_app_tokens"].get(t.app)
-    if not registered_app:
-        return False
-
-    valid_token = registered_app["token"] == t.token
-    if not valid_token:
-        return False    
-
-    now = datetime.utcnow()
-    expire_stamp = datetime.fromisoformat(registered_app["expire"].replace('Z', '+00:00'))
-    expired_token = now > expire_stamp
-    if expired_token:
-        return False
-
-    return True
-
 
 
 
