@@ -1,0 +1,21 @@
+{   
+    debug
+    log
+    local_certs      
+}
+
+
+{{ base_url }} {
+
+    encode gzip
+    {% for route in routes %}
+    handle_path {{route['path']}}/* {
+        reverse_proxy {{route['url']}}
+    }
+    {% endfor %}
+    handle {
+        root ./public
+        file_server browse
+    }
+
+}

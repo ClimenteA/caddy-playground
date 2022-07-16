@@ -2,7 +2,8 @@ import uvicorn
 import fastapi
 import requests
 from pydantic import BaseModel
-
+import logging as log
+from typing import Optional
 
 
 class RegisterModel(BaseModel):
@@ -12,39 +13,67 @@ class RegisterModel(BaseModel):
     meta: dict
 
 
+
+class TokenModel(BaseModel):
+    token: str
+    app: Optional[str]
+
+
 app = fastapi.FastAPI()
+
+
+db = {}
 
 
 def register():
 
     response = requests.post(
-        url="http://localhost/api/discovery-service/register",
+        url="http://127.0.0.1/api/discovery-service/register",
         json=RegisterModel(
             url="http://127.0.0.1:3001",
             app="auth-service",
             token="secret-token",
-            meta={
-                "extracustom": [
-                    "some",
-                    "info"
-                ]
-            }
+            meta={}
         ).dict()
     )
 
     if response.status_code != 200:
-        print("Registration failed!")
-        print(response.content)
+        log.error("Registration failed!")
+        log.error(response.content)
         return {}
 
-    print("Registration successful!")
-    return response.json()
+    log.info("Registration successful!")
+
+    data = response.json()
+    return data
 
 
 
 @app.get("/")
 def index():
     return register()
+    
+
+@app.get("/data")
+def data():
+    return {"some": "data"}
+    
+
+@app.get("/protected")
+def protectedroute(token: str = fastapi.Header(None)):
+
+    response = requests.post(
+        url="http://127.0.0.1/api/discovery-service/validate-token",
+        json=TokenModel(
+            app="auth-service",
+            token=token,
+        ).dict()
+    )
+
+    if response.json() is True:
+        return "Ok, authentificated"
+        
+    return "Invalid token"
     
 
 

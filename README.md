@@ -10,7 +10,7 @@ Steps:
 - when opening `localhost` in the browser the js application (SPA) will load and interact with the microservices; 
 - start the services by cd into service's package and run `python3 main.py`;
 - update Caddyfile for each new service added (TODO - use caddy api to update it automatically);
-- start caddy webserver with `./caddy run`;
+- start caddy webserver with `./caddy run --pidfile caddy.pid`;
 
 
 Dependencies:

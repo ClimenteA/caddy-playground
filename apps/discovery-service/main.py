@@ -3,6 +3,9 @@ import uvicorn
 from datetime import datetime, timedelta
 from fastapi import FastAPI
 from pydantic import BaseModel
+import logging as log
+from typing import Optional
+
 
 app = FastAPI()
 
@@ -32,25 +35,52 @@ class RegisterModel(BaseModel):
     meta: dict
 
 
+class TokenModel(BaseModel):
+    token: str
+    app: Optional[str]
+
+
 def register_service(register: RegisterModel):
 
     if register.app in db["approved_apps"]:
         if db["approved_apps"][register.app] == register.token:
 
-            new_token = str(uuid.uuid5(uuid.NAMESPACE_OID, SECRET + register.app + register.token))
+            new_token = str(uuid.uuid4())
             db["valid_app_tokens"][register.app] = {
                 "token": new_token, 
-                "expire": (datetime.utcnow() + timedelta(days=30)).isoformat()
+                "expire": (datetime.utcnow() + timedelta(minutes=30)).isoformat()
             }
             register.token = None
             db["registered_services"][register.app] = register.dict()
 
-            return new_token
+            log.info(f"Registration successful for '{register.app}'!")
+            return TokenModel(token=new_token)
 
     return "Invalid credentials"
 
 
-@app.post("/register")
+def validate_token(t: TokenModel):
+
+    registered_app = db["valid_app_tokens"].get(t.app)
+    if not registered_app:
+        return False
+
+    valid_token = registered_app["token"] == t.token
+    if not valid_token:
+        return False    
+
+    now = datetime.utcnow()
+    expire_stamp = datetime.fromisoformat(registered_app["expire"].replace('Z', '+00:00'))
+    expired_token = now > expire_stamp
+    if expired_token:
+        return False
+
+    return True
+
+
+
+
+@app.post("/register", response_model=TokenModel)
 def register(register: RegisterModel):
     return register_service(register)
 
@@ -59,6 +89,16 @@ def register(register: RegisterModel):
 def registered():
     return db
 
+
+@app.get("/services")
+def registered_services():
+    return db["registered_services"]
+
+
+@app.post("/validate-token")
+def valid_token(t: TokenModel):
+    return validate_token(t)
+    
 
 
 
